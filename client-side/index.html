@@ -15,31 +15,113 @@
       #messages > li { padding: 0.5rem 1rem; }
       #messages > li:nth-child(odd) { background: #efefef; }
       #typing_status { background-color: #efefef; padding: 0 1rem; margin: 0.25rem; }
+      .profile {
+        background-color: rgb(163, 161, 161);
+        padding: 1rem;
+      }
+      .profile > input {
+        border: none;
+        padding: 0.5rem 2rem;
+        flex-grow: 1;
+        border-radius: 2rem;
+        margin: 0.25rem;
+      }
+      .profile > input:focus{ outline: none;}
+      #toRoom { 
+        outline: none;
+      }
+      #joinRoom {
+        background: #333;
+        border: none;
+        padding: 0 1rem;
+        margin: 0.25rem;
+        border-radius: 3px;
+        outline: none;
+        color: #fff;
+        padding: 1rem;
+      }
     </style>
   </head>
   <body>
+    <div class="profile">
+      <input type="text" id="userId" placeholder="User ID">
+      <input type="text" id="name" placeholder="Name"><br>
+      <input type="text" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password"><br>
+      
+      <input id="toRoom" autocomplete="off" placeholder="Receiver User"/>
+      <button id="joinRoom">Create Chat</button>
+    </div>
     <ul id="messages"></ul>
     <form id="form" action="">
       <p id="typing_status"></p>
-      <input id="input" autocomplete="off" /><button>Send</button>
+      <input id="input" autocomplete="off" />
+      <button>Send</button>
     </form>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script>
     <script>
+        
         const socket = io('http://localhost:3000');
+
+        const messages = document.getElementById('messages');
 
         const form = document.getElementById('form');
         const input = document.getElementById('input');
+        const toRoom = document.getElementById('toRoom');
+        const joinRoomBtn = document.getElementById('joinRoom');
+
+        const userId = document.getElementById('userId');
+        const name = document.getElementById('name');
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+
+        joinRoomBtn.addEventListener('click', async(e) => {
+          e.preventDefault();
+          if(userId.value && toRoom.value){
+            console.log('join room ...');
+            
+            socket.emit('joinRoom', {fromUser: userId.value, toUser: toRoom.value});
+
+            try {
+              fetch('http://localhost:3000/api/6/messages')
+              .then((response) => {
+                return response.json();
+              })
+              .then((data) => {
+                for (const element of data) {
+                  const item = document.createElement('li');
+                  item.textContent = `${element.userId}: ${element.message}`;
+                  messages.appendChild(item);
+                  window.scrollTo(0, document.body.scrollHeight);
+                }
+              })
+              .catch((err) => {
+                console.log(err);
+              })
+            } catch (error) {
+              console.log(error);
+            }
+          }
+        })
 
         form.addEventListener('submit', (e) => {
           e.preventDefault();
-          if (input.value) {
-            socket.emit('new_text', input.value);
+          if (input.value && userId.value && password.value && toRoom.value) {
+            // socket.emit('new_text', input.value);
+            // input.value = '';
+
+            console.log(input.value);
+
+            let user = {id: userId.value, password: password.value};
+            let message = input.value;
+            let toUser = toRoom.value;
+
+            socket.emit('sendMessage', { user, message, toUser });
             input.value = '';
           }
         });
 
-        const messages = document.getElementById('messages');
         socket.on('chat_message', (message) => {
           const item = document.createElement('li');
           item.textContent = message;
